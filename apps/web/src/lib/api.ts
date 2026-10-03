@@ -4,6 +4,33 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8
 
 type HttpMethod = "GET" | "POST" | "PATCH";
 
+function getErrorMessage(payload: unknown, fallback: string): string {
+  if (!payload) return fallback;
+  if (typeof payload === "string") return payload;
+  if (Array.isArray(payload)) {
+    const first = payload[0];
+    if (typeof first === "string") return first;
+    if (typeof first === "object" && first !== null && "msg" in first) {
+      const msg = (first as { msg?: unknown }).msg;
+      if (typeof msg === "string") return msg;
+    }
+    return fallback;
+  }
+  if (typeof payload === "object" && payload !== null) {
+    const detail = (payload as { detail?: unknown }).detail;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      const first = detail[0];
+      if (typeof first === "string") return first;
+      if (typeof first === "object" && first !== null && "msg" in first) {
+        const msg = (first as { msg?: unknown }).msg;
+        if (typeof msg === "string") return msg;
+      }
+    }
+  }
+  return fallback;
+}
+
 async function request<T>(path: string, method: HttpMethod = "GET", body?: unknown): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
@@ -14,17 +41,22 @@ async function request<T>(path: string, method: HttpMethod = "GET", body?: unkno
     cache: "no-store",
   });
 
-  if (!response.ok) {
-    const fallback = `Request failed with status ${response.status}`;
+  const responseText = await response.text();
+  let parsed: unknown = null;
+  if (responseText) {
     try {
-      const payload = (await response.json()) as { detail?: string };
-      throw new Error(payload.detail ?? fallback);
+      parsed = JSON.parse(responseText) as unknown;
     } catch {
-      throw new Error(fallback);
+      parsed = responseText;
     }
   }
 
-  return (await response.json()) as T;
+  if (!response.ok) {
+    const fallback = `Request failed with status ${response.status}`;
+    throw new Error(getErrorMessage(parsed, fallback));
+  }
+
+  return (parsed ?? {}) as T;
 }
 
 export const api = {
@@ -40,12 +72,12 @@ export const api = {
     return request<Product>(`/products/${id}`);
   },
   createProduct(payload: {
-    sku: string;
     name: string;
     category: string;
     brand: string;
     cost_price: number;
     sell_price: number;
+    initial_stock_qty: number;
     defect_note?: string | null;
     image_url?: string | null;
   }): Promise<Product> {

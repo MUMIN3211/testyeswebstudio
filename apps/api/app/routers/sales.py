@@ -25,7 +25,7 @@ def _sale_no() -> str:
 
 @router.post("", response_model=SaleResponse, status_code=status.HTTP_201_CREATED)
 def create_sale(payload: SaleCreate, db: Session = Depends(get_db)):
-    product_ids = list({item.product_id for item in payload.items})
+    product_ids = list({str(item.product_id) for item in payload.items})
     products = db.scalars(select(Product).where(Product.id.in_(product_ids)).with_for_update()).all()
     product_map = {product.id: product for product in products}
 
@@ -37,7 +37,7 @@ def create_sale(payload: SaleCreate, db: Session = Depends(get_db)):
         )
 
     for item in payload.items:
-        product = product_map[item.product_id]
+        product = product_map[str(item.product_id)]
         if product.stock_qty < item.qty:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -54,7 +54,7 @@ def create_sale(payload: SaleCreate, db: Session = Depends(get_db)):
     response_items: list[SaleItemResponse] = []
 
     for item in payload.items:
-        product = product_map[item.product_id]
+        product = product_map[str(item.product_id)]
         unit_cost = _to_money(Decimal(product.cost_price))
         unit_sell_price = _to_money(Decimal(item.unit_sell_price) if item.unit_sell_price is not None else Decimal(product.sell_price))
 
@@ -100,10 +100,10 @@ def create_sale(payload: SaleCreate, db: Session = Depends(get_db)):
     sale.total_cost = _to_money(total_cost)
     sale.total_profit = _to_money(total_profit)
 
-    db.commit()
+    db.flush()
     db.refresh(sale)
 
-    return SaleResponse(
+    sale_response = SaleResponse(
         id=sale.id,
         sale_no=sale.sale_no,
         total_amount=sale.total_amount,
@@ -112,3 +112,7 @@ def create_sale(payload: SaleCreate, db: Session = Depends(get_db)):
         created_at=sale.created_at,
         items=response_items,
     )
+
+    db.commit()
+
+    return sale_response
