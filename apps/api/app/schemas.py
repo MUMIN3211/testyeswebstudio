@@ -11,12 +11,12 @@ BrandType = Literal["Ferrari", "Mercedes-Benz", "Red Bull", "McLaren", "BMW", "O
 
 
 class ProductCreate(BaseModel):
-    sku: str = Field(min_length=1, max_length=120)
     name: str = Field(min_length=1, max_length=255)
     category: CategoryType
     brand: BrandType
     cost_price: Decimal = Field(ge=0)
     sell_price: Decimal = Field(ge=0)
+    initial_stock_qty: int = Field(default=0, ge=0)
     defect_note: str | None = Field(default=None, max_length=2000)
     image_url: str | None = Field(default=None, max_length=2000)
 

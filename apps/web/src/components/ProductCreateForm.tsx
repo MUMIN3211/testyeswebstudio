@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 
 import { api } from "@/lib/api";
 import type { Brand, Category } from "@/lib/types";
@@ -13,34 +13,45 @@ export function ProductCreateForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    sku: "",
     name: "",
     category: "shirt",
     brand: "Ferrari",
     cost_price: "0",
     sell_price: "0",
+    initial_stock_qty: "0",
     defect_note: "",
     image_url: "",
   });
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setMessage(null);
     setError(null);
     try {
+      const initialStockQty = Number.parseInt(formData.initial_stock_qty, 10);
+      if (Number.isNaN(initialStockQty) || initialStockQty < 0) {
+        throw new Error("จำนวนสต็อกตั้งต้นต้องเป็น 0 หรือมากกว่า");
+      }
+
       const created = await api.createProduct({
-        sku: formData.sku.trim(),
         name: formData.name.trim(),
         category: formData.category,
         brand: formData.brand,
         cost_price: Number.parseFloat(formData.cost_price),
         sell_price: Number.parseFloat(formData.sell_price),
+        initial_stock_qty: initialStockQty,
         defect_note: formData.defect_note.trim() || null,
         image_url: formData.image_url.trim() || null,
       });
       setMessage(`สร้างสินค้าเรียบร้อย: ${created.sku}`);
-      setFormData((prev) => ({ ...prev, sku: "", name: "", defect_note: "", image_url: "" }));
+      setFormData((prev) => ({
+        ...prev,
+        name: "",
+        initial_stock_qty: "0",
+        defect_note: "",
+        image_url: "",
+      }));
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "สร้างสินค้าไม่สำเร็จ");
     } finally {
@@ -50,14 +61,7 @@ export function ProductCreateForm() {
 
   return (
     <form className="grid-form panel" onSubmit={onSubmit}>
-      <label className="field">
-        SKU
-        <input
-          required
-          value={formData.sku}
-          onChange={(event) => setFormData((prev) => ({ ...prev, sku: event.target.value }))}
-        />
-      </label>
+      <p className="muted">รหัสสินค้า (SKU) จะถูกสร้างอัตโนมัติแบบไม่ซ้ำ</p>
       <label className="field">
         ชื่อสินค้า
         <input
@@ -109,6 +113,17 @@ export function ProductCreateForm() {
           step="0.01"
           value={formData.sell_price}
           onChange={(event) => setFormData((prev) => ({ ...prev, sell_price: event.target.value }))}
+        />
+      </label>
+      <label className="field">
+        จำนวนสต็อกตั้งต้น
+        <input
+          required
+          type="number"
+          min="0"
+          step="1"
+          value={formData.initial_stock_qty}
+          onChange={(event) => setFormData((prev) => ({ ...prev, initial_stock_qty: event.target.value }))}
         />
       </label>
       <label className="field">
