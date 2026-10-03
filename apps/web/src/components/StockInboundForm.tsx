@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 
 import { api } from "@/lib/api";
 import type { Product } from "@/lib/types";
@@ -18,7 +18,7 @@ export function StockInboundForm({ products }: Props) {
   const [unitCost, setUnitCost] = useState("0");
   const [note, setNote] = useState("");
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
