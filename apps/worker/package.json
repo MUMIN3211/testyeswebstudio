@@ -1,0 +1,9 @@
+{
+  "name": "worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Background worker for inventory app",
+  "scripts": {
+    "start": "node index.js"
+  }
+}

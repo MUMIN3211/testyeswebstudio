@@ -10,3 +10,38 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+### Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+
+### Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+### Env
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+### IDE
+.vscode/
+.idea/
+
+### Local runtime artifacts
+*.log
+*.db
+*.sqlite3
+
+### AI agent skill files (local tooling)
+.agents/
+.claude/
+skills-lock.json

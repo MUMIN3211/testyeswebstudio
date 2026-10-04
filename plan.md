@@ -185,32 +185,32 @@ error code คร่าวๆ:
 ## 10) TODO checklist เริ่มงาน
 
 ## Phase 1 setup
-- [ ] init next.js app
-- [ ] init fastapi app
-- [ ] connect supabase db
-- [ ] setup env
+- [x] init next.js app
+- [x] init fastapi app
+- [x] connect supabase db (ผ่าน DATABASE_URL + schema.sql)
+- [x] setup env
 
 ## Phase 2 product + stock in
-- [ ] ทำ table products + stock_movements
-- [ ] ทำ API เพิ่มสินค้า
-- [ ] ทำ API รับของเข้า
-- [ ] ทำหน้า list + add product
+- [x] ทำ table products + stock_movements
+- [x] ทำ API เพิ่มสินค้า
+- [x] ทำ API รับของเข้า
+- [x] ทำหน้า list + add product
 
 ## Phase 3 sales + profit
-- [ ] ทำ API ขายสินค้า
-- [ ] เช็ค/ตัดสต็อก
-- [ ] คำนวณกำไร
-- [ ] ทำหน้า create sale
+- [x] ทำ API ขายสินค้า
+- [x] เช็ค/ตัดสต็อก
+- [x] คำนวณกำไร
+- [x] ทำหน้า create sale
 
 ## Phase 4 dashboard/report
-- [ ] endpoint summary
-- [ ] dashboard ui
-- [ ] report ตามช่วงเวลา
+- [x] endpoint summary
+- [x] dashboard ui
+- [x] report ตามช่วงเวลา
 
 ## Phase 5 polish
-- [ ] validation ให้ครบ
-- [ ] loading/error states หน้า frontend
-- [ ] test จุดคำนวณกำไรและตัดสต็อก
+- [x] validation ให้ครบ (lint/build/smoke test)
+- [x] loading/error states หน้า frontend
+- [x] test จุดคำนวณกำไรและตัดสต็อก (smoke flow)
 
 ---
 
@@ -226,3 +226,5 @@ error code คร่าวๆ:
 ## 12) Notes ท้ายแผน
 - แผนนี้เป็น draft เร็วภายใน 30 นาที เน้นให้เริ่มพัฒนาได้ก่อน
 - ตอนเริ่ม implement จริงให้ล็อก schema final อีกครั้งก่อนยิง production
+- สถานะล่าสุด: MVP โครงหลักทำเสร็จแล้วใน repo นี้
+- งานต่อที่แนะนำ: อัปโหลดรูปเข้า Supabase Storage จริง + เพิ่ม automated tests แบบ unit/integration
