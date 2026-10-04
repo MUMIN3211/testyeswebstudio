@@ -1,22 +1,13 @@
 import type { Metadata } from "next";
-import { Orbitron, Rajdhani } from "next/font/google";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { NavLinks } from "@/components/NavLinks";
 import "./globals.css";
 
-const rajdhani = Rajdhani({
-  variable: "--font-rajdhani",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const orbitron = Orbitron({
-  variable: "--font-orbitron",
-  subsets: ["latin"],
-  weight: ["600", "700"],
-});
+// Fonts load straight from Google Fonts: next/font/google fails to build on Vercel with Turbopack in this setup.
+const GOOGLE_FONTS_URL =
+  "https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Rajdhani:wght@400;500;600;700&display=swap";
 
 export const metadata: Metadata = {
   title: "Formula 1 Inventory",
@@ -25,7 +16,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="th" className={`${rajdhani.variable} ${orbitron.variable}`}>
+    <html lang="th">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href={GOOGLE_FONTS_URL} />
+      </head>
       <body>
         <header className="app-header">
           <div className="shell">
