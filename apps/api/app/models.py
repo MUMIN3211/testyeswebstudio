@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -18,7 +18,7 @@ class Product(Base):
         CheckConstraint("stock_qty >= 0", name="ck_products_stock_non_negative"),
     )
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
     sku: Mapped[str] = mapped_column(String(120), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -46,8 +46,8 @@ class StockMovement(Base):
         CheckConstraint("movement_type in ('IN', 'OUT', 'ADJUST')", name="ck_stock_movements_valid_type"),
     )
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    product_id: Mapped[str] = mapped_column(String(36), ForeignKey("products.id"), nullable=False)
+    id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
+    product_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), ForeignKey("products.id"), nullable=False)
     movement_type: Mapped[str] = mapped_column(String(20), nullable=False)
     qty: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
@@ -63,12 +63,17 @@ class Sale(Base):
 
     __table_args__ = (UniqueConstraint("sale_no", name="uq_sales_sale_no"),)
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
     sale_no: Mapped[str] = mapped_column(String(120), nullable=False)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     total_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
     total_profit: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
+    # Shipping is charged once per sale: shipping_charged is what the customer paid, shipping_cost what the courier cost.
+    shipping_charged: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
+    shipping_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=Decimal("0.00"))
+    promotion: Mapped[str | None] = mapped_column(String(30), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     items: Mapped[list["SaleItem"]] = relationship(back_populates="sale")
@@ -79,9 +84,9 @@ class SaleItem(Base):
 
     __table_args__ = (CheckConstraint("qty > 0", name="ck_sale_items_qty_positive"),)
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    sale_id: Mapped[str] = mapped_column(String(36), ForeignKey("sales.id"), nullable=False)
-    product_id: Mapped[str] = mapped_column(String(36), ForeignKey("products.id"), nullable=False)
+    id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
+    sale_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), ForeignKey("sales.id"), nullable=False)
+    product_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), ForeignKey("products.id"), nullable=False)
     qty: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_sell_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     unit_cost_snapshot: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

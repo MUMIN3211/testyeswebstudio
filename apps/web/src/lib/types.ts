@@ -22,16 +22,19 @@ export type DashboardSummary = {
   total_sales_amount: string;
   total_profit_net: string;
   total_loss: string;
+  total_shipping_profit: string;
   top_selling_products: Array<{
     product_id: string;
     sku: string;
     name: string;
+    image_url: string | null;
     qty_sold: number;
   }>;
   low_stock_products: Array<{
     product_id: string;
     sku: string;
     name: string;
+    image_url: string | null;
     stock_qty: number;
   }>;
 };
@@ -58,6 +61,11 @@ export type SaleResponse = {
   total_amount: string;
   total_cost: string;
   total_profit: string;
+  shipping_charged: string;
+  shipping_cost: string;
+  shipping_profit: string;
+  discount_amount: string;
+  promotion: string | null;
   created_at: string;
   items: Array<{
     product_id: string;

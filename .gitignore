@@ -35,3 +35,8 @@ venv/
 ### IDE
 .vscode/
 .idea/
+
+### Local runtime artifacts
+*.log
+*.db
+*.sqlite3

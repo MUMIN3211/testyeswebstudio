@@ -54,3 +54,9 @@ create index if not exists idx_products_stock_qty on products(stock_qty);
 create index if not exists idx_stock_movements_product_id on stock_movements(product_id);
 create index if not exists idx_sales_created_at on sales(created_at);
 create index if not exists idx_sale_items_sale_id on sale_items(sale_id);
+
+-- Shipping & promotions (charged once per sale)
+alter table sales add column if not exists shipping_charged numeric(12, 2) not null default 0;
+alter table sales add column if not exists shipping_cost numeric(12, 2) not null default 0;
+alter table sales add column if not exists discount_amount numeric(12, 2) not null default 0;
+alter table sales add column if not exists promotion text null check (promotion in ('FREE_SHIPPING', 'DISCOUNT_20'));

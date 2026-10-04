@@ -1,20 +1,23 @@
 from datetime import UTC, datetime
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..common import sale_without_archived_products, sum_or_zero, to_money
 from ..database import get_db
 from ..models import Product, Sale, SaleItem, StockMovement
-from ..schemas import SaleCreate, SaleItemResponse, SaleResponse
+from ..schemas import SaleCreate, SaleItemResponse, SaleResponse, ShippingProfitResponse
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
-
-def _to_money(value: Decimal) -> Decimal:
-    return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+# Shipping is charged once per sale and depends on the category: (courier cost, fee charged to the customer).
+# Shirts ship for 28 and the customer pays 40; hats ship for 50 and the customer pays 50.
+# A sale containing any hat uses the hat rate.
+SHIPPING_RATES = {"shirt": (Decimal("28.00"), Decimal("40.00")), "hat": (Decimal("50.00"), Decimal("50.00"))}
+PROMOTION_DISCOUNT = Decimal("20.00")
 
 
 def _sale_no() -> str:
@@ -55,12 +58,12 @@ def create_sale(payload: SaleCreate, db: Session = Depends(get_db)):
 
     for item in payload.items:
         product = product_map[str(item.product_id)]
-        unit_cost = _to_money(Decimal(product.cost_price))
-        unit_sell_price = _to_money(Decimal(item.unit_sell_price) if item.unit_sell_price is not None else Decimal(product.sell_price))
+        unit_cost = to_money(Decimal(product.cost_price))
+        unit_sell_price = to_money(Decimal(item.unit_sell_price) if item.unit_sell_price is not None else Decimal(product.sell_price))
 
-        line_amount = _to_money(unit_sell_price * item.qty)
-        line_cost = _to_money(unit_cost * item.qty)
-        line_profit = _to_money(line_amount - line_cost)
+        line_amount = to_money(unit_sell_price * item.qty)
+        line_cost = to_money(unit_cost * item.qty)
+        line_profit = to_money(line_amount - line_cost)
 
         sale_item = SaleItem(
             sale_id=sale.id,
@@ -96,9 +99,19 @@ def create_sale(payload: SaleCreate, db: Session = Depends(get_db)):
             )
         )
 
-    sale.total_amount = _to_money(total_amount)
-    sale.total_cost = _to_money(total_cost)
-    sale.total_profit = _to_money(total_profit)
+    sale_categories = {product_map[str(item.product_id)].category for item in payload.items}
+    shipping_cost, shipping_fee = SHIPPING_RATES["hat" if "hat" in sale_categories else "shirt"]
+    shipping_charged = Decimal("0.00") if payload.promotion == "FREE_SHIPPING" else shipping_fee
+    # The discount comes off the goods, so it can never exceed what the goods cost the customer.
+    discount_amount = min(PROMOTION_DISCOUNT, total_amount) if payload.promotion == "DISCOUNT_20" else Decimal("0.00")
+
+    sale.total_amount = to_money(total_amount - discount_amount)
+    sale.total_cost = to_money(total_cost)
+    sale.total_profit = to_money(total_profit - discount_amount + shipping_charged - shipping_cost)
+    sale.shipping_charged = shipping_charged
+    sale.shipping_cost = shipping_cost
+    sale.discount_amount = discount_amount
+    sale.promotion = payload.promotion
 
     db.flush()
     db.refresh(sale)
@@ -109,6 +122,11 @@ def create_sale(payload: SaleCreate, db: Session = Depends(get_db)):
         total_amount=sale.total_amount,
         total_cost=sale.total_cost,
         total_profit=sale.total_profit,
+        shipping_charged=sale.shipping_charged,
+        shipping_cost=sale.shipping_cost,
+        shipping_profit=to_money(sale.shipping_charged - sale.shipping_cost),
+        discount_amount=sale.discount_amount,
+        promotion=sale.promotion,
         created_at=sale.created_at,
         items=response_items,
     )
@@ -116,3 +134,11 @@ def create_sale(payload: SaleCreate, db: Session = Depends(get_db)):
     db.commit()
 
     return sale_response
+
+
+@router.get("/shipping-profit", response_model=ShippingProfitResponse)
+def get_shipping_profit(db: Session = Depends(get_db)):
+    total = db.scalar(
+        select(sum_or_zero(Sale.shipping_charged - Sale.shipping_cost)).where(sale_without_archived_products())
+    )
+    return ShippingProfitResponse(total_shipping_profit=Decimal(total or 0))

@@ -9,12 +9,18 @@ load_dotenv()
 
 
 def _build_engine():
-    database_url = os.getenv("DATABASE_URL", "sqlite:///./inventory.db")
-    connect_args: dict[str, object] = {}
-    if database_url.startswith("sqlite"):
-        connect_args["check_same_thread"] = False
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if not database_url or "[YOUR-" in database_url:
+        raise RuntimeError(
+            "DATABASE_URL is not set. Create apps/api/.env with your Supabase connection string "
+            "(see .env.example)."
+        )
+    if database_url.startswith("postgres://"):
+        database_url = "postgresql://" + database_url[len("postgres://"):]
+    if database_url.startswith("postgresql://"):
+        database_url = "postgresql+psycopg://" + database_url[len("postgresql://"):]
 
-    return create_engine(database_url, pool_pre_ping=True, connect_args=connect_args)
+    return create_engine(database_url, pool_pre_ping=True)
 
 
 engine = _build_engine()
