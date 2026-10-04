@@ -14,7 +14,9 @@ from .routers.sales import router as sales_router
 
 def _allowed_origins() -> list[str]:
     configured = os.getenv("CORS_ORIGINS", "http://localhost:3000")
-    return [origin.strip() for origin in configured.split(",") if origin.strip()]
+    # Browsers send the Origin header without a trailing slash, so strip any from the config.
+    origins = (origin.strip().rstrip("/") for origin in configured.split(","))
+    return [origin for origin in origins if origin]
 
 
 @asynccontextmanager
