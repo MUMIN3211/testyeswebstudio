@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +17,16 @@ def _allowed_origins() -> list[str]:
     return [origin.strip() for origin in configured.split(",") if origin.strip()]
 
 
-app = FastAPI(title="Motorsport Inventory API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # Local dev creates missing tables; on Vercel the schema is managed with supabase/schema.sql,
+    # so cold starts skip the extra round trips.
+    if not os.getenv("VERCEL"):
+        Base.metadata.create_all(bind=engine)
+    yield
+
+
+app = FastAPI(title="Motorsport Inventory API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins(),
@@ -24,11 +34,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def startup():
-    Base.metadata.create_all(bind=engine)
 
 
 @app.get("/health")
