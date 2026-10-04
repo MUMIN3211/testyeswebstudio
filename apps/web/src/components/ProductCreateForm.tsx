@@ -20,19 +20,40 @@ const DEFAULT_FORM = {
   image_url: "",
 };
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGE_SIDE = 800;
+const JPEG_QUALITY = 0.82;
+
+/**
+ * Read an image and shrink it to at most 800px on the longest side as JPEG.
+ * Images are stored inline in the database, so keeping them small keeps API responses
+ * well under Vercel's 4.5MB response limit.
+ */
 async function fileToDataUrl(file: File) {
   if (!file.type.startsWith("image/")) {
     throw new Error("รองรับเฉพาะไฟล์รูปภาพเท่านั้น");
   }
-  if (file.size > 2 * 1024 * 1024) {
-    throw new Error("ไฟล์รูปใหญ่เกิน 2MB กรุณาเลือกรูปที่เล็กลง");
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error("ไฟล์รูปใหญ่เกิน 10MB กรุณาเลือกรูปที่เล็กลง");
   }
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("อ่านไฟล์รูปไม่สำเร็จ"));
-    reader.readAsDataURL(file);
-  });
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error("อ่านไฟล์รูปไม่สำเร็จ");
+  }
+  const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("อ่านไฟล์รูปไม่สำเร็จ");
+  // JPEG has no transparency; paint a white background so transparent PNGs don't turn black.
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return canvas.toDataURL("image/jpeg", JPEG_QUALITY);
 }
 
 export function ProductCreateForm() {
@@ -261,7 +282,7 @@ export function ProductCreateForm() {
                 🖼
               </span>
               <strong>ลากรูปมาวาง หรือคลิกเพื่อเลือก</strong>
-              <span className="field-hint">PNG / JPG ขนาดไม่เกิน 2MB</span>
+              <span className="field-hint">PNG / JPG ไม่เกิน 10MB · ระบบย่อรูปให้อัตโนมัติ</span>
             </div>
           )}
         </article>

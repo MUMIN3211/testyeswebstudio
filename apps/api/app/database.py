@@ -3,6 +3,7 @@ from collections.abc import Generator
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 load_dotenv()
@@ -20,7 +21,12 @@ def _build_engine():
     if database_url.startswith("postgresql://"):
         database_url = "postgresql+psycopg://" + database_url[len("postgresql://"):]
 
-    return create_engine(database_url, pool_pre_ping=True)
+    # Prepared statements break behind Supabase's transaction pooler (port 6543), so turn them off.
+    connect_args = {"prepare_threshold": None}
+    if os.getenv("VERCEL"):
+        # Serverless instances come and go; let the Supabase pooler hold connections instead of each instance.
+        return create_engine(database_url, poolclass=NullPool, connect_args=connect_args)
+    return create_engine(database_url, pool_pre_ping=True, connect_args=connect_args)
 
 
 engine = _build_engine()
