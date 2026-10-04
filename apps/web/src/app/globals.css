@@ -28,6 +28,9 @@
   --dur-fast: 0.18s;
   --dur: 0.35s;
   --dur-slow: 0.6s;
+  /* Font families loaded from Google Fonts in app/layout.tsx. */
+  --font-rajdhani: "Rajdhani";
+  --font-orbitron: "Orbitron";
 }
 
 * {
