@@ -1,9 +1,15 @@
 import { ProductCreateForm } from "@/components/ProductCreateForm";
+import { PageHeader } from "@/components/ui";
 
 export default function NewProductPage() {
   return (
     <section className="page">
-      <h2 className="page-title">เพิ่มสินค้าใหม่</h2>
+      <PageHeader
+        title="เพิ่มสินค้าใหม่"
+        subtitle="กรอกข้อมูลให้ครบ ระบบจะสร้าง SKU ให้อัตโนมัติ"
+        backHref="/products"
+        backLabel="กลับไปหน้าสินค้า"
+      />
       <ProductCreateForm />
     </section>
   );

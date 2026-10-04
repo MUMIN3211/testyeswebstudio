@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from uuid import uuid4
 from uuid import UUID
 
@@ -6,8 +5,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
+from ..common import get_product_or_404
 from ..database import get_db
 from ..models import Product, StockMovement
 from ..schemas import ProductCreate, ProductQueryParams, ProductResponse, ProductUpdate
@@ -16,9 +16,13 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 
 def _generate_sku(db: Session) -> str:
-    date_part = datetime.now(UTC).strftime("%y%m%d")
+    alphabet = "STMRFB"
     for _ in range(10):
-        candidate = f"F1-{date_part}-{uuid4().hex[:5].upper()}"
+        seed = uuid4().hex.upper()
+        first_letter = alphabet[int(seed[0], 16) % len(alphabet)]
+        second_letter = alphabet[int(seed[1], 16) % len(alphabet)]
+        digits = [str(int(seed[i], 16) % 10) for i in range(2, 6)]
+        candidate = f"{first_letter}{digits[0]}{digits[1]} {second_letter}{digits[2]}{digits[3]}"
         exists = db.scalar(select(Product.id).where(Product.sku == candidate).limit(1))
         if not exists:
             return candidate
@@ -31,6 +35,7 @@ def list_products(
     category: str | None = Query(default=None),
     brand: str | None = Query(default=None),
     include_inactive: bool = Query(default=False),
+    archived: bool = Query(default=False, description="Return only archived (hidden) products"),
     db: Session = Depends(get_db),
 ):
     params = ProductQueryParams(
@@ -38,9 +43,12 @@ def list_products(
         category=category,
         brand=brand,
         include_inactive=include_inactive,
+        archived=archived,
     )
     query = select(Product)
-    if not params.include_inactive:
+    if params.archived:
+        query = query.where(Product.is_active.is_(False))
+    elif not params.include_inactive:
         query = query.where(Product.is_active.is_(True))
     if params.search:
         like_value = f"%{params.search}%"
@@ -50,16 +58,12 @@ def list_products(
     if params.brand:
         query = query.where(Product.brand == params.brand)
 
-    products = db.scalars(query.order_by(Product.created_at.desc())).all()
-    return list(products)
+    return list(db.scalars(query.order_by(Product.created_at.desc())).all())
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
 def get_product(product_id: UUID, db: Session = Depends(get_db)):
-    product = db.get(Product, str(product_id))
-    if product is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
-    return product
+    return get_product_or_404(db, product_id)
 
 
 @router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
@@ -105,9 +109,7 @@ def create_product(payload: ProductCreate, db: Session = Depends(get_db)):
 
 @router.patch("/{product_id}", response_model=ProductResponse)
 def update_product(product_id: UUID, payload: ProductUpdate, db: Session = Depends(get_db)):
-    product = db.get(Product, str(product_id))
-    if product is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    product = get_product_or_404(db, product_id)
 
     update_data = payload.model_dump(exclude_unset=True)
     for key, value in update_data.items():
@@ -123,4 +125,23 @@ def update_product(product_id: UUID, payload: ProductUpdate, db: Session = Depen
         raise
 
     db.refresh(product)
+    return product
+
+
+@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+def archive_product(product_id: UUID, db: Session = Depends(get_db)):
+    product = get_product_or_404(db, product_id)
+    if product.is_active:
+        product.is_active = False
+        db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{product_id}/restore", response_model=ProductResponse)
+def restore_product(product_id: UUID, db: Session = Depends(get_db)):
+    product = get_product_or_404(db, product_id)
+    if not product.is_active:
+        product.is_active = True
+        db.commit()
+        db.refresh(product)
     return product
