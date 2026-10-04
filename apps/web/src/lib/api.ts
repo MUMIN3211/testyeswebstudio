@@ -1,7 +1,8 @@
 import type { Promotion } from "./shipping";
 import type { DashboardSummary, Product, ProfitLossReport, SaleResponse } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+// Trailing slashes are dropped so `${API_BASE_URL}/path` never becomes "//path".
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000").trim().replace(/\/+$/, "");
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
