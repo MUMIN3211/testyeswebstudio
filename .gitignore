@@ -40,3 +40,8 @@ venv/
 *.log
 *.db
 *.sqlite3
+
+### AI agent skill files (local tooling)
+.agents/
+.claude/
+skills-lock.json
